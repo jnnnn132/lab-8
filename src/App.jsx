@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 import {v4} from 'uuid';
 import axios from 'axios';
 import { BrowserRouter as Router, Route } from 'react-router-dom';
+import firebase from './firebase/firebase'
 
 import Header from './components/Header';
 import AddTransaction from './components/AddTransaction';
@@ -20,32 +21,31 @@ export default class App extends Component {
   loadData = () => {
     // get data from variable
     const data = [ 
-      {
-        id: v4(),
-        name: 'Dinner with family',
-        amount: -1250,
-        date: new Date(2020,1,28)
-      },
-      {
-        id: v4(),
-        name: 'Movie',
-        amount: -200,
-        date: new Date(2020,1,29)
-      },
-      {
-        id: v4(),
-        name: 'Lottery',
-        amount: 1500,
-        date: new Date(2020,2,2)
-      },
-      {
-        id: v4(),
-        name: 'Salary',
-        amount: 6500,
-        date: new Date(2020,1,25)
-      }
+      // {
+      //   id: v4(),
+      //   name: 'Dinner with family',
+      //   amount: -1250,
+      //   date: new Date(2020,1,28)
+      // },
+      // {
+      //   id: v4(),
+      //   name: 'Movie',
+      //   amount: -200,
+      //   date: new Date(2020,1,29)
+      // },
+      // {
+      //   id: v4(),
+      //   name: 'Lottery',
+      //   amount: 1500,
+      //   date: new Date(2020,2,2)
+      // },
+      // {
+      //   id: v4(),
+      //   name: 'Salary',
+      //   amount: 6500,
+      //   date: new Date(2020,1,25)
+      // }
     ];
-
     this.setState( { transactions: data } );
   }
 
@@ -58,10 +58,21 @@ export default class App extends Component {
       });
   }
 
+  loadFirebase=()=>{
+    firebase.firestore().collection('expenses').onSnapshot(items=>{
+      const exp=[]
+      items.forEach(item=>{
+        exp.push(item.data())
+      })
+      this.setState({transactions:exp})
+    })
+    
+  }
+
   componentDidMount() {
     // this.loadData();   // load data from variable
-    this.loadJsonData();  // load data from JSON file on server
-    // this.loadFirebase(); // load data from Firebase
+    //this.loadJsonData();  // load data from JSON file on server
+    this.loadFirebase(); // load data from Firebase
   }
 
   validateForm = (name,amount) => {
@@ -73,6 +84,9 @@ export default class App extends Component {
       return false;
     } else if (+amount === 0) {
       window.alert('Amount CANNOT be zero!');
+      return false;
+    } else if(!Number.isInteger(+amount)){
+      window.alert('Amount Must be Integer!');
       return false;
     }
   
@@ -89,9 +103,10 @@ export default class App extends Component {
       id: v4(),
       name,
       amount: +amount,
-      date: new Date()
+      date: new Date().getTime()
     }
 
+    firebase.firestore().collection('expenses').add(newTransaction)
     this.state.transactions.unshift(newTransaction);
     this.setState( { transactions: this.state.transactions } );
   }
@@ -99,6 +114,11 @@ export default class App extends Component {
   clearTransactions = () => {
     let ans = window.confirm("You are going to clear all transaction history!!!")
     if (ans) {
+      firebase.firestore().collection('expenses').get().then(function(Snapshot) {
+        Snapshot.forEach(function(doc){
+          doc.ref.delete()
+        })
+      })
       this.setState( { transactions: [] } );
     }
   }
